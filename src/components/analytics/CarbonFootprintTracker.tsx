@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
+import { stringifyCarbonReportCsv, type CarbonReportRow } from '@/lib/analytics/carbonCalculator';
 
 export type CarbonPresetKey = '7d' | '30d' | 'this-month' | 'ytd';
 
@@ -20,6 +21,7 @@ export interface CarbonSavingsSummary {
 
 export interface CarbonFootprintTrackerProps {
   dailyMetrics?: CarbonDailyMetric[];
+  carbonReportRows?: CarbonReportRow[];
   dailyBaselineKgCo2?: number;
   dailyActualKgCo2?: number;
   defaultPreset?: CarbonPresetKey;
@@ -169,6 +171,7 @@ const PRESET_BUTTONS: { key: CarbonPresetKey; label: string }[] = [
 
 export const CarbonFootprintTracker: React.FC<CarbonFootprintTrackerProps> = ({
   dailyMetrics,
+  carbonReportRows,
   dailyBaselineKgCo2,
   dailyActualKgCo2,
   defaultPreset = '30d',
@@ -185,6 +188,7 @@ export const CarbonFootprintTracker: React.FC<CarbonFootprintTrackerProps> = ({
   const [startDate, setStartDate] = useState(initialRange.startDate);
   const [endDate, setEndDate] = useState(initialRange.endDate);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   const handleSelectPreset = (preset: CarbonPresetKey) => {
     const nextRange = getPresetDateRange(preset, resolvedToday);
@@ -213,6 +217,37 @@ export const CarbonFootprintTracker: React.FC<CarbonFootprintTrackerProps> = ({
     setValidationError(err);
   };
 
+  const handleExportCsv = () => {
+    if (isExporting || validationError) return;
+    setIsExporting(true);
+
+    window.setTimeout(() => {
+      const rows: CarbonReportRow[] = carbonReportRows
+        ? carbonReportRows.filter((row) => row.date >= startDate && row.date <= endDate)
+        : (dailyMetrics ?? [])
+            .filter((row) => row.date >= startDate && row.date <= endDate)
+            .map((row) => ({
+              date: row.date,
+              venue: '',
+              transitMode: '',
+              distanceKm: null,
+              co2eSavedKg: Math.max(0, row.baselineKgCo2 - row.actualKgCo2),
+            }));
+
+      const csv = stringifyCarbonReportCsv(rows);
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const objectUrl = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = `carbon-savings-${resolvedToday}.csv`;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(objectUrl);
+      setIsExporting(false);
+    }, 0);
+  };
   const summary = useMemo(() => {
     if (validationError) {
       return {
@@ -354,6 +389,22 @@ export const CarbonFootprintTracker: React.FC<CarbonFootprintTrackerProps> = ({
             {summary.savedKgCo2.toFixed(2)} kg CO₂ ({summary.savingsPercent}%)
           </div>
         </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-800 pt-4">
+        <p className="text-xs text-slate-400">
+          Export carbon savings for the selected date range.
+        </p>
+        <button
+          type="button"
+          data-testid="export-carbon-report"
+          onClick={handleExportCsv}
+          disabled={isExporting || Boolean(validationError)}
+          aria-busy={isExporting}
+          className="inline-flex items-center gap-2 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {isExporting ? 'Preparing CSV...' : 'Export Carbon Report (CSV)'}
+        </button>
       </div>
     </section>
   );
