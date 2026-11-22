@@ -14,6 +14,14 @@ export interface CarbonCalculationResult {
   carbonSavedGrams: number;
 }
 
+export interface CarbonReportRow {
+  date: string;
+  venue: string;
+  transitMode: string;
+  distanceKm: number;
+  co2eSavedKg: number;
+}
+
 export const EMISSION_GRAMS_PER_PKM: Record<TransitMode, number> = {
   foot: 0,
   bike: 0,
@@ -45,4 +53,32 @@ export function calculateCarbonSavings(
     modeEmissionGrams,
     carbonSavedGrams,
   };
+}
+
+const CSV_FORMULA_PREFIX = /^[\u0000-\u0020]*[=+@-]/;
+
+function escapeCsvCell(value: string | number): string {
+  let cell = String(value ?? '');
+
+  // Prefix formula-like text so spreadsheet applications treat it as data.
+  if (CSV_FORMULA_PREFIX.test(cell)) {
+    cell = `'${cell}`;
+  }
+
+  return `"${cell.replace(/"/g, '""')}"`;
+}
+
+export function stringifyCarbonReportCsv(rows: CarbonReportRow[]): string {
+  const headers = ['Date', 'Venue', 'Transit Mode', 'KM', 'CO2e Saved (kg)'];
+  const records = rows.map((row) => [
+    row.date,
+    row.venue,
+    row.transitMode,
+    Number.isFinite(row.distanceKm) ? row.distanceKm : '',
+    Number.isFinite(row.co2eSavedKg) ? row.co2eSavedKg : '',
+  ]);
+
+  return [headers, ...records]
+    .map((record) => record.map(escapeCsvCell).join(','))
+    .join('\r\n');
 }
