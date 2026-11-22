@@ -61,7 +61,7 @@ function escapeCsvCell(value: string | number): string {
   let cell = String(value ?? '');
 
   // Prefix formula-like text so spreadsheet applications treat it as data.
-  if (CSV_FORMULA_PREFIX.test(cell)) {
+  if (typeof value === 'string' && CSV_FORMULA_PREFIX.test(cell)) {
     cell = `'${cell}`;
   }
 
