@@ -1,7 +1,10 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { stringifyCarbonReportCsv, type CarbonReportRow } from '@/lib/analytics/carbonCalculator';
+import {
+  stringifyCarbonReportCsv,
+  type CarbonReportRow,
+} from '@/lib/analytics/carbonCalculator';
 
 export type CarbonPresetKey = '7d' | '30d' | 'this-month' | 'ytd';
 
@@ -248,6 +251,7 @@ export const CarbonFootprintTracker: React.FC<CarbonFootprintTrackerProps> = ({
       setIsExporting(false);
     }, 0);
   };
+
   const summary = useMemo(() => {
     if (validationError) {
       return {
