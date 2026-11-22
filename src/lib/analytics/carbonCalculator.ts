@@ -18,7 +18,7 @@ export interface CarbonReportRow {
   date: string;
   venue: string;
   transitMode: string;
-  distanceKm: number;
+  distanceKm: number | null;
   co2eSavedKg: number;
 }
 
@@ -74,7 +74,7 @@ export function stringifyCarbonReportCsv(rows: CarbonReportRow[]): string {
     row.date,
     row.venue,
     row.transitMode,
-    Number.isFinite(row.distanceKm) ? row.distanceKm : '',
+    row.distanceKm !== null && Number.isFinite(row.distanceKm) ? row.distanceKm : '',
     Number.isFinite(row.co2eSavedKg) ? row.co2eSavedKg : '',
   ]);
 
